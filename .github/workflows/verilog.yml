@@ -1,0 +1,29 @@
+name: Verilog Simulation
+
+on:
+  push: 
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Icarus Verilog
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iverilog
+
+    - name: Compile
+      run: |
+        iverilog -o sim rtl/and_gate.v tb/tb_and_gate.v
+
+    - name: Run Simulation
+      run: |
+        vvp sim
