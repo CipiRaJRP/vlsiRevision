@@ -1,29 +1,39 @@
 name: Verilog Simulation
 
 on:
-  push: 
+  push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
 
 jobs:
   simulate:
+
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
 
-    - name: Install Icarus Verilog
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y iverilog
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Compile
-      run: |
-        iverilog -o sim rtl/and_gate.v tb/tb_and_gate.v
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
 
-    - name: Run Simulation
-      run: |
-        vvp sim
+      - name: Compile RTL and Testbench
+        run: |
+          iverilog -o sim rtl/and_gate.v tb/tb_and_gate.v
+
+      - name: Run Simulation
+        run: |
+          vvp sim
+
+      - name: Upload Waveform
+        uses: actions/upload-artifact@v4
+        with:
+          name: waveform
+          path: wave.vcd
