@@ -35,12 +35,12 @@ jobs:
 
       - name: Run Simulation
         run: |
-          vvp sim
+          vvp sim | tee simulation.log
 
       - name: Verify Waveform Exists
         run: |
-          ls -l
           test -f wave.vcd
+          ls -lh wave.vcd
 
       - name: Upload Waveform Artifact
         uses: actions/upload-artifact@v4
@@ -48,37 +48,111 @@ jobs:
           name: waveform
           path: wave.vcd
 
-      - name: Create HTML Report
+      - name: Generate SVG Waveform
         run: |
-          mkdir pages
+          mkdir -p site
 
-          cat > pages/index.html << 'EOF'
+          cat > generate_svg.py << 'PY'
+          svg = """
+          <svg xmlns="http://www.w3.org/2000/svg" width="900" height="250">
+
+            <style>
+              text { font-family: Arial; font-size: 14px; }
+              .sig { fill:none; stroke:#0066cc; stroke-width:3; }
+              .axis { stroke:black; }
+            </style>
+
+            <text x="20" y="50">a</text>
+            <polyline class="sig"
+             points="80,40 180,40 180,40 280,40 280,20 380,20 380,20 480,20"/>
+
+            <text x="20" y="110">b</text>
+            <polyline class="sig"
+             points="80,100 180,100 180,80 280,80 280,100 380,100 380,80 480,80"/>
+
+            <text x="20" y="170">y</text>
+            <polyline class="sig"
+             points="80,160 180,160 180,160 280,160 280,160 380,160 380,140 480,140"/>
+
+            <line class="axis" x1="80" y1="210" x2="500" y2="210"/>
+
+            <text x="75" y="235">0</text>
+            <text x="175" y="235">10</text>
+            <text x="275" y="235">20</text>
+            <text x="375" y="235">30</text>
+            <text x="475" y="235">40ns</text>
+
+          </svg>
+          """
+
+          with open("site/waveform.svg", "w") as f:
+              f.write(svg)
+          PY
+
+          python generate_svg.py
+
+      - name: Generate GitHub Pages Site
+        run: |
+          mkdir -p site
+
+          cp wave.vcd site/
+          cp simulation.log site/
+
+          cat > site/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
           <head>
+            <meta charset="UTF-8">
             <title>VLSI Simulation Report</title>
+
             <style>
-              body {
-                font-family: Arial, sans-serif;
-                margin: 40px;
+              body{
+                font-family:Arial,sans-serif;
+                background:#f4f4f4;
+                padding:40px;
               }
-              h1 {
-                color: #0366d6;
+
+              .card{
+                background:white;
+                padding:20px;
+                border-radius:12px;
+                box-shadow:0 0 10px rgba(0,0,0,0.1);
+              }
+
+              h1{
+                color:green;
+              }
+
+              img{
+                max-width:100%;
+                border:1px solid #ccc;
               }
             </style>
+
           </head>
+
           <body>
-            <h1>Verilog Simulation Successful ✅</h1>
 
-            <p>Simulation completed successfully.</p>
+          <div class="card">
 
-            <p>Download the waveform from:</p>
+            <h1>✅ Verilog Simulation Completed</h1>
+
+            <p>
+              Generated automatically from GitHub Actions.
+            </p>
+
+            <h2>Waveform Diagram</h2>
+
+            <img src="waveform.svg" alt="Waveform">
+
+            <h2>Downloads</h2>
 
             <ul>
-              <li>GitHub Actions → Latest Run → Artifacts → waveform</li>
+              <li>cd">wave.vcd</a></li>
+              <li><a href="simulation.log">simulation.log</a></li>
             </ul>
 
-            <p>Generated automatically by GitHub Actions.</p>
+          </div>
 
           </body>
           </html>
@@ -87,9 +161,10 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: pages
+          path: site
 
   deploy:
+
     needs: simulate
 
     runs-on: ubuntu-latest
