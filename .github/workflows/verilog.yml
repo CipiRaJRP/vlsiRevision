@@ -9,6 +9,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   simulate:
 
@@ -32,8 +37,67 @@ jobs:
         run: |
           vvp sim
 
-      - name: Upload Waveform
+      - name: Verify Waveform Exists
+        run: |
+          ls -l
+          test -f wave.vcd
+
+      - name: Upload Waveform Artifact
         uses: actions/upload-artifact@v4
         with:
           name: waveform
           path: wave.vcd
+
+      - name: Create HTML Report
+        run: |
+          mkdir pages
+
+          cat > pages/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>VLSI Simulation Report</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                margin: 40px;
+              }
+              h1 {
+                color: #0366d6;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Verilog Simulation Successful ✅</h1>
+
+            <p>Simulation completed successfully.</p>
+
+            <p>Download the waveform from:</p>
+
+            <ul>
+              <li>GitHub Actions → Latest Run → Artifacts → waveform</li>
+            </ul>
+
+            <p>Generated automatically by GitHub Actions.</p>
+
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy:
+
+    needs: simulate
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
